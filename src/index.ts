@@ -8,6 +8,10 @@ import { buildSchema } from 'type-graphql';
 import { HelloResolver } from "./resolvers/hello";
 import { PostResolver } from "./resolvers/post";
 import { UserResolver } from "./resolvers/user";
+import redis from 'redis';
+import session from 'express-session';
+import connectRedis from 'connect-redis';
+import { MyContext } from "./types";
 
 const main = async () => {
   // MikroOrm setup:
@@ -16,13 +20,35 @@ const main = async () => {
   orm.getMigrator().up();
   // creating an instance of express
   const app = express();
+  // connecting redis to our express session 
+  const RedisStore = connectRedis(session);
+  // creating a redis client instance
+  const redisClient = redis.createClient();
+  app.use (
+    session({
+      name: 'qid', //name of the cookies
+      store: new RedisStore({
+        client: redisClient, 
+        disableTouch: true, 
+      }), // telling express session we're using redis and modifying settings
+      cookie: { // settings for our cookies:
+        maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
+        httpOnly: true,
+        secure: __prod__, // cookie only works in https 
+        sameSite: 'lax' // protecting csrf
+      }, 
+      saveUninitialized: false, 
+      secret: "env_variable", // secret to sign your cookie
+      resave: false, // to avoid constant pings
+    })
+  );
   // creating a new apollo server, to use graph ql se the schema using the buildSchema method from type-graphql
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
       resolvers: [HelloResolver, PostResolver, UserResolver], // check resolvers folder
       validate: false,
     }),
-    context: () => ({ em: orm.em })
+    context: ({req, res}) : MyContext => ({ em: orm.em, req, res })
   });
   const PORT = 4000;
 

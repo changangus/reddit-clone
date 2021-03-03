@@ -1,8 +1,7 @@
 import { MyContext } from 'src/types';
-import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Resolver } from 'type-graphql';
+import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Resolver, Query } from 'type-graphql';
 import argon2 from 'argon2';
 import { User } from '../entities/User';
-
 @InputType() // Input types are used for arguments
 class UsernameAndPasswordInput {
   @Field()
@@ -30,6 +29,20 @@ class UserResponse {
 
 @Resolver()
 export class UserResolver {
+  @Query(() => User, {nullable: true})
+  async me(
+    @Ctx() ctx: MyContext
+  ) {
+    console.log(ctx.req.session);
+    // if there is no userId, then they are not logged in:
+    if(!ctx.req.session.userId) {
+      return null
+    }
+
+    const user = await ctx.em.findOne(User, {id: ctx.req.session.userId});
+    return user
+  }
+
   @Mutation(() => UserResponse) // set return type in ()
   async register (
     @Arg('options') options: UsernameAndPasswordInput, // @Arg sets the args graphql is expecting, sql can infer the type from typescript
@@ -65,7 +78,10 @@ export class UserResolver {
           }]
         }
       }
-    }
+    };
+
+    // store userId session, this sets cookie on user and keeps them logged in:
+    ctx.req.session.userId = user.id;
 
     return { 
       user
@@ -93,9 +109,10 @@ export class UserResolver {
       }
     };
 
+    ctx.req.session.userId = user.id;
+
     return  {
       user,
     };
   }
-  
 }
