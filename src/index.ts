@@ -12,6 +12,7 @@ import redis from 'redis';
 import session from 'express-session';
 import connectRedis from 'connect-redis';
 import { MyContext } from "./types";
+import cors from "cors";
 
 const main = async () => {
   // MikroOrm setup:
@@ -24,13 +25,19 @@ const main = async () => {
   const RedisStore = connectRedis(session);
   // creating a redis client instance
   const redisClient = redis.createClient();
+  // applying cors middleware 
+  app.use(cors({
+    origin: "http://localhost:3000",
+    credentials: true
+  }));
+  // using express session, config below:
   app.use (
     session({
       name: 'qid', //name of the cookies
-      store: new RedisStore({
+      store: new RedisStore({ // telling express session we're using redis and modifying settings
         client: redisClient, 
         disableTouch: true, 
-      }), // telling express session we're using redis and modifying settings
+      }), 
       cookie: { // settings for our cookies:
         maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
         httpOnly: true,
@@ -52,12 +59,11 @@ const main = async () => {
   });
   const PORT = 4000;
 
-  apolloServer.applyMiddleware({ app });
+  apolloServer.applyMiddleware({ app, cors: false });
 
   app.listen(PORT, () => {
     console.log(`Listening on port ${PORT}`)
   });
-
 };
 
 main().catch((err) => {
