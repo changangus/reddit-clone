@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import "colors";
 import { MikroORM } from "@mikro-orm/core";
 import { __prod__ } from "./constants";
 import microConfig from './mikro-orm.config';
@@ -62,7 +63,7 @@ const main = async () => {
   apolloServer.applyMiddleware({ app, cors: false });
 
   app.listen(PORT, () => {
-    console.log(`Listening on port ${PORT}`)
+    console.log(`Listening on port ${PORT}`.cyan.bold)
   });
 };
 

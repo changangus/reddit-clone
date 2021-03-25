@@ -2,6 +2,7 @@ import { MyContext } from 'src/types';
 import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Resolver, Query } from 'type-graphql';
 import argon2 from 'argon2';
 import { User } from '../entities/User';
+import { EntityManager } from '@mikro-orm/postgresql';
 @InputType() // Input types are used for arguments
 class UsernameAndPasswordInput {
   @Field()
@@ -65,8 +66,19 @@ export class UserResolver {
     };
 
     const hashedPassword = await argon2.hash(options.password); // argon2 is used to hash passwords
-    const user = ctx.em.create(User, {username: options.username, password: hashedPassword}); // create the user from the input types above
+    // const user = ctx.em.create(User, {username: options.username, password: hashedPassword}); // create the user from the input types above
+    let user;
     try {
+      const result = await (ctx.em as EntityManager)
+        .createQueryBuilder(User)
+        .getKnexQuery()
+        .insert({
+          username: options.username,
+          password: hashedPassword,
+          created_at: new Date(),
+          updated_at: new Date()
+        }).returning("*");
+      user = result[0];
       await ctx.em.persistAndFlush(user); // persist and flush to the datbase
 
     } catch (error) {
