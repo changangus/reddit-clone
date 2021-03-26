@@ -3,6 +3,7 @@ import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Resolver, Query } fro
 import argon2 from 'argon2';
 import { User } from '../entities/User';
 import { EntityManager } from '@mikro-orm/postgresql';
+import { COOKIE_NAME } from '../constants';
 @InputType() // Input types are used for arguments
 class UsernameAndPasswordInput {
   @Field()
@@ -34,7 +35,6 @@ export class UserResolver {
   async me(
     @Ctx() ctx: MyContext
   ) {
-    console.log(ctx.req.session);
     // if there is no userId, then they are not logged in:
     if(!ctx.req.session.userId) {
       return null
@@ -126,5 +126,20 @@ export class UserResolver {
     return  {
       user,
     };
+  }
+
+  @Mutation(() => Boolean)
+  async logout(
+    @Ctx() { req, res }:MyContext
+  ){
+    return new Promise(resolve => req.session.destroy(err => {
+      res.clearCookie(COOKIE_NAME);
+      if(err){
+        console.log(err);
+        resolve(false);
+        return
+      }
+      resolve(true) 
+    }));
   }
 }
