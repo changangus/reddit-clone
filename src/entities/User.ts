@@ -21,6 +21,10 @@ export class User {
   @Property({type: 'text', unique: true}) // unique property sets this field to be uniqe compared to all the rest in the database
   username!: string
 
+  @Field()
+  @Property({type: 'text', unique: true})
+  email!: string
+
   // Removing the field property removes the ability to select the password from graphql
   @Property({type: 'text'})
   password!: string

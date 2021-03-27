@@ -14,8 +14,10 @@ import session from 'express-session';
 import connectRedis from 'connect-redis';
 import { MyContext } from "./types";
 import cors from "cors";
+import { User } from "./entities/User";
 
 const main = async () => {
+  
   // MikroOrm setup:
   // initiate orm based on our config file
   const orm = await MikroORM.init(microConfig);
@@ -32,20 +34,20 @@ const main = async () => {
     credentials: true
   }));
   // using express session, config below:
-  app.use (
+  app.use(
     session({
       name: COOKIE_NAME, //name of the cookies
       store: new RedisStore({ // telling express session we're using redis and modifying settings
-        client: redisClient, 
-        disableTouch: true, 
-      }), 
+        client: redisClient,
+        disableTouch: true,
+      }),
       cookie: { // settings for our cookies:
         maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
         httpOnly: true,
         secure: __prod__, // cookie only works in https 
         sameSite: 'lax' // protecting csrf
-      }, 
-      saveUninitialized: false, 
+      },
+      saveUninitialized: false,
       secret: "env_variable", // secret to sign your cookie
       resave: false, // to avoid constant pings
     })
@@ -56,7 +58,7 @@ const main = async () => {
       resolvers: [HelloResolver, PostResolver, UserResolver], // check resolvers folder
       validate: false,
     }),
-    context: ({req, res}) : MyContext => ({ em: orm.em, req, res })
+    context: ({ req, res }): MyContext => ({ em: orm.em, req, res })
   });
   const PORT = 4000;
 
