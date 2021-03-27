@@ -31,6 +31,8 @@ const User_1 = require("../entities/User");
 const constants_1 = require("../constants");
 const UsernameEmailAndPasswordInput_1 = require("./UsernameEmailAndPasswordInput");
 const validateRegister_1 = require("../utils/validateRegister");
+const sendEmail_1 = require("src/utils/sendEmail");
+const uuid_1 = require("uuid");
 let FieldError = class FieldError {
 };
 __decorate([
@@ -84,8 +86,8 @@ let UserResolver = class UserResolver {
                     .getKnexQuery()
                     .insert({
                     username: options.username,
-                    password: hashedPassword,
                     email: options.email,
+                    password: hashedPassword,
                     created_at: new Date(),
                     updated_at: new Date()
                 }).returning("*");
@@ -93,6 +95,7 @@ let UserResolver = class UserResolver {
                 yield ctx.em.persistAndFlush(user);
             }
             catch (error) {
+                console.log(error);
                 if (error.code === '23505') {
                     return {
                         errors: [{
@@ -117,7 +120,7 @@ let UserResolver = class UserResolver {
             if (!user) {
                 return {
                     errors: [
-                        { field: 'username', message: 'Username is incorrect.' }
+                        { field: 'usernameOrEmail', message: 'Username or Email is incorrect.' }
                     ]
                 };
             }
@@ -148,6 +151,19 @@ let UserResolver = class UserResolver {
                 }
                 resolve(true);
             }));
+        });
+    }
+    forgotPassword(email, { em, redis }) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const user = yield em.findOne(User_1.User, { email });
+            if (!user) {
+                return true;
+            }
+            const token = uuid_1.v4();
+            yield redis.set(constants_1.FORGET_PASSWORD_PREFIX + token, user.id, 'ex', 1000 * 60 * 60);
+            const text = `<a href='http://localhost:3000/change-password/918/${token}'>Reset Password</a>`;
+            yield sendEmail_1.sendEmail(email, text);
+            return true;
         });
     }
 };
@@ -182,6 +198,14 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], UserResolver.prototype, "logout", null);
+__decorate([
+    type_graphql_1.Mutation(() => Boolean),
+    __param(0, type_graphql_1.Arg('email')),
+    __param(1, type_graphql_1.Ctx()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], UserResolver.prototype, "forgotPassword", null);
 UserResolver = __decorate([
     type_graphql_1.Resolver()
 ], UserResolver);

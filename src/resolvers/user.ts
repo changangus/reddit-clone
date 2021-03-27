@@ -1,11 +1,13 @@
 import { MyContext } from 'src/types';
-import { Arg, Ctx, Field, Mutation, ObjectType, Resolver, Query, Args } from 'type-graphql';
+import { Arg, Ctx, Field, Mutation, ObjectType, Resolver, Query } from 'type-graphql';
 import argon2 from 'argon2';
 import { User } from '../entities/User';
 import { EntityManager } from '@mikro-orm/postgresql';
-import { COOKIE_NAME } from '../constants';
+import { COOKIE_NAME, FORGET_PASSWORD_PREFIX } from '../constants';
 import { UsernameEmailAndPasswordInput } from './UsernameEmailAndPasswordInput';
 import { validateRegister } from '../utils/validateRegister';
+import { sendEmail } from 'src/utils/sendEmail';
+import { v4 } from 'uuid';
 @ObjectType()
 class FieldError {
   @Field()
@@ -56,8 +58,8 @@ export class UserResolver {
         .getKnexQuery()
         .insert({
           username: options.username,
-          password: hashedPassword,
           email: options.email,
+          password: hashedPassword,
           created_at: new Date(),
           updated_at: new Date()
         }).returning("*");
@@ -65,6 +67,7 @@ export class UserResolver {
       await ctx.em.persistAndFlush(user); // persist and flush to the datbase
 
     } catch (error) {
+      console.log(error)
       if (error.code === '23505') {
         return {
           errors: [{
@@ -95,7 +98,7 @@ export class UserResolver {
     if (!user) {
       return {
         errors: [
-          { field: 'username', message: 'Username is incorrect.' } // sets error message based on incorrect field
+          { field: 'usernameOrEmail', message: 'Username or Email is incorrect.' } // sets error message based on incorrect field
         ]
       }
     };
@@ -130,12 +133,25 @@ export class UserResolver {
     }));
   }
 
-  // @Mutation(() => Boolean)
-  // async forgotPassword(
-  //   @Args('email') email: string,
-  //   @Ctx() { em }: MyContext
-  // ){
-  //   // const user = await em.findOne(User, {email})
-  //   return true
-  // }
+  @Mutation(() => Boolean)
+  async forgotPassword(
+    @Arg('email') email: string,
+    @Ctx() { em, redis }: MyContext
+  ){
+    const user = await em.findOne(User, {email})
+    if(!user) {
+      // email is not in DB
+      return true
+    } 
+    const token = v4();
+
+    await redis.set(FORGET_PASSWORD_PREFIX + token, user.id, 'ex', 1000 * 60 * 60);
+
+    const text = `<a href='http://localhost:3000/change-password/918/${token}'>Reset Password</a>`;
+    await sendEmail(email, text);
+
+    return true
+  }
 }
+
+
