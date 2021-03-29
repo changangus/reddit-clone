@@ -1,0 +1,22 @@
+{
+	"folders": [
+		{
+			"path": "..\\.."
+		},
+		{
+			"path": "..\\..\\..\\web"
+		}
+	],
+	"settings": {
+		"prettier.javascriptEnable": [
+
+			"javascript",
+			"javascriptreact"
+		],
+		"prettier.typescriptEnable": [
+		
+			"typescript",
+			"typescriptreact"
+		]
+	}
+}
