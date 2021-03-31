@@ -12,7 +12,7 @@ import session from 'express-session';
 import connectRedis from 'connect-redis';
 import { MyContext } from './types';
 import cors from 'cors';
-import { createConnection } from 'typeorm'
+import { createConnection } from 'typeorm';
 import { Post } from './entities/Post';
 import { User } from './entities/User';
 
@@ -24,7 +24,7 @@ const main = async () => {
     password: 'postgres',
     logging: true,
     synchronize: true,
-    entities: [Post, User]
+    entities: [Post, User],
   });
   // creating an instance of express
   const app = express();

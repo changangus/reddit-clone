@@ -10,7 +10,6 @@ import {
 } from 'type-graphql';
 import argon2 from 'argon2';
 import { User } from '../entities/User';
-import { EntityManager } from '@mikro-orm/postgresql';
 import { COOKIE_NAME, FORGET_PASSWORD_PREFIX } from '../constants';
 import { UsernameEmailAndPasswordInput } from './UsernameEmailAndPasswordInput';
 import { validateRegister } from '../utils/validateRegister';
@@ -64,17 +63,15 @@ export class UserResolver {
         .createQueryBuilder()
         .insert()
         .into(User)
-        .values(
-          {
-            username: options.username,
-            email: options.email,
-            password: hashedPassword,
-          }
-        )
+        .values({
+          username: options.username,
+          email: options.email,
+          password: hashedPassword,
+        })
         .returning('*')
         .execute();
       user = result.raw[0];
-      await User.create(user); 
+      await User.create(user);
     } catch (error) {
       console.log(error);
       if (error.code === '23505') {
@@ -105,8 +102,8 @@ export class UserResolver {
   ): Promise<UserResponse> {
     const user = await User.findOne(
       usernameOrEmail.includes('@')
-        ? {where: { email: usernameOrEmail }}
-        : { where: { username: usernameOrEmail }}
+        ? { where: { email: usernameOrEmail } }
+        : { where: { username: usernameOrEmail } }
     );
     if (!user) {
       return {
@@ -152,7 +149,7 @@ export class UserResolver {
     @Arg('email') email: string,
     @Ctx() { redis }: MyContext
   ) {
-    const user = await User.findOne({where: {email}});
+    const user = await User.findOne({ where: { email } });
     if (!user) {
       // email is not in DB
       return true;
@@ -217,15 +214,16 @@ export class UserResolver {
       };
     }
 
-    
-
-    User.update({id: userIdNum}, {
-      password: await argon2.hash(newPassword)
-    });
+    User.update(
+      { id: userIdNum },
+      {
+        password: await argon2.hash(newPassword),
+      }
+    );
 
     req.session.userId = user.id;
 
-    redis.del(key)
+    redis.del(key);
 
     return {
       user,
